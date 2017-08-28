@@ -5,13 +5,10 @@
 (function(){
 	Tracy = window.Tracy || {};
 
-	if (document.currentScript) {
-		var nonce = document.currentScript.getAttribute('nonce');
-		var contentId = document.currentScript.dataset.id;
-	}
+	var layer = document.getElementById('tracy-debug');
 
 	Tracy.getAjaxHeader = function() {
-		return contentId;
+		return layer.dataset.id;
 	};
 
 	var Panel = Tracy.DebugPanel = function(id) {
@@ -36,7 +33,7 @@
 		evalScripts(elem);
 
 		draggable(elem, {
-			handles: elem.querySelectorAll('h1'),
+			handle: elem.querySelector('h1'),
 			start: function() {
 				_this.toFloat();
 			}
@@ -71,7 +68,6 @@
 
 		forEach(elem.querySelectorAll('.tracy-icons a'), function(a) {
 			a.addEventListener('click', function(e) {
-				clearTimeout(elem.Tracy.displayTimeout);
 				if (this.rel === 'close') {
 					_this.toPeek();
 				} else {
@@ -214,12 +210,7 @@
 		this.elem = document.getElementById(this.id);
 
 		draggable(this.elem, {
-			handles: this.elem.querySelectorAll('li:first-child'),
 			draggedClass: 'tracy-dragged'
-		});
-
-		this.elem.addEventListener('mousedown', function(e) {
-			e.preventDefault();
 		});
 
 		this.initTabs(this.elem);
@@ -236,10 +227,6 @@
 
 				} else if (this.rel) {
 					var panel = Debug.panels[this.rel];
-					if (panel.elem.dataset.tracyContent) {
-						panel.init();
-					}
-
 					if (e.shiftKey) {
 						panel.toFloat();
 						panel.toWindow();
@@ -323,13 +310,11 @@
 			throw new Error('Tracy requires IE 11+');
 		}
 
-		Debug.layer = document.createElement('div');
-		Debug.layer.setAttribute('id', 'tracy-debug');
-		Debug.layer.innerHTML = content;
-		document.documentElement.appendChild(Debug.layer);
-		evalScripts(Debug.layer);
+		document.body.appendChild(layer);
+		layer.innerHTML = content;
+		evalScripts(layer);
 		Tracy.Dumper.init();
-		Debug.layer.style.display = 'block';
+		layer.style.display = 'block';
 		Debug.bar.init();
 
 		forEach(document.querySelectorAll('.tracy-panel'), function(panel) {
@@ -343,7 +328,7 @@
 	};
 
 	Debug.loadAjax = function(content, dumps) {
-		forEach(Debug.layer.querySelectorAll('.tracy-panel.tracy-ajax'), function(panel) {
+		forEach(layer.querySelectorAll('.tracy-panel.tracy-ajax'), function(panel) {
 			Debug.panels[panel.id].savePosition();
 			delete Debug.panels[panel.id];
 			panel.parentNode.removeChild(panel);
@@ -354,8 +339,8 @@
 			ajaxBar.parentNode.removeChild(ajaxBar);
 		}
 
-		Debug.layer.insertAdjacentHTML('beforeend', content);
-		evalScripts(Debug.layer);
+		layer.insertAdjacentHTML('beforeend', content);
+		evalScripts(layer);
 		ajaxBar = document.getElementById('tracy-ajax-bar');
 		document.getElementById(Bar.prototype.id).appendChild(ajaxBar);
 
@@ -437,7 +422,7 @@
 		}
 		Debug.scriptElem = document.createElement('script');
 		Debug.scriptElem.src = url;
-		Debug.scriptElem.setAttribute('nonce', nonce);
+		Debug.scriptElem.setAttribute('nonce', layer.dataset.nonce);
 		document.documentElement.appendChild(Debug.scriptElem);
 	};
 
@@ -446,8 +431,8 @@
 			if ((!script.hasAttribute('type') || script.type === 'text/javascript' || script.type === 'application/javascript') && !script.tracyEvaluated) {
 				var dolly = script.ownerDocument.createElement('script');
 				dolly.textContent = script.textContent;
-				dolly.setAttribute('nonce', nonce);
-				script.ownerDocument.documentElement.appendChild(dolly);
+				dolly.setAttribute('nonce', layer.dataset.nonce);
+				script.ownerDocument.body.appendChild(dolly);
 				script.tracyEvaluated = true;
 			}
 		});
@@ -478,9 +463,9 @@
 			}
 		};
 
-		var onMove = function(e) {
+		var onmousemove = function(e) {
 			if (e.buttons === 0) {
-				return onEnd(e);
+				return onmouseup(e);
 			}
 			if (!started) {
 				if (options.draggedClass) {
@@ -492,12 +477,12 @@
 				started = true;
 			}
 
-			clientX = e.touches ? e.touches[0].clientX : e.clientX;
-			clientY = e.touches ? e.touches[0].clientY : e.clientY;
+			clientX = e.clientX;
+			clientY = e.clientY;
 			return false;
 		};
 
-		var onEnd = function(e) {
+		var onmouseup = function(e) {
 			if (started) {
 				if (options.draggedClass) {
 					elem.classList.remove(options.draggedClass);
@@ -507,47 +492,38 @@
 				}
 			}
 			dragging = null;
-			dE.removeEventListener('mousemove', onMove);
-			dE.removeEventListener('mouseup', onEnd);
-			dE.removeEventListener('touchmove', onMove);
-			dE.removeEventListener('touchend', onEnd);
+			dE.removeEventListener('mousemove', onmousemove);
+			dE.removeEventListener('mouseup', onmouseup);
 			return false;
 		};
 
-		var onStart = function(e) {
+		(options.handle || elem).addEventListener('mousedown', function(e) {
 			e.preventDefault();
 			e.stopPropagation();
 
 			if (dragging) { // missed mouseup out of window?
-				return onEnd(e);
+				return onmouseup(e);
 			}
 
 			var pos = getPosition(elem);
-			clientX = e.touches ? e.touches[0].clientX : e.clientX;
-			clientY = e.touches ? e.touches[0].clientY : e.clientY;
+			clientX = e.clientX;
+			clientY = e.clientY;
 			deltaX = pos.right + clientX;
 			deltaY = pos.bottom + clientY;
 			dragging = true;
 			started = false;
-			dE.addEventListener('mousemove', onMove);
-			dE.addEventListener('mouseup', onEnd);
-			dE.addEventListener('touchmove', onMove);
-			dE.addEventListener('touchend', onEnd);
+			dE.addEventListener('mousemove', onmousemove);
+			dE.addEventListener('mouseup', onmouseup);
 			requestAnimationFrame(redraw);
 			if (options.start) {
 				options.start(e, elem);
 			}
-		};
+		});
 
-		forEach(options.handles, function (handle) {
-			handle.addEventListener('mousedown', onStart);
-			handle.addEventListener('touchstart', onStart);
-
-			handle.addEventListener('click', function(e) {
-				if (started) {
-					e.stopImmediatePropagation();
-				}
-			});
+		(options.handle || elem).addEventListener('click', function(e) {
+			if (started) {
+				e.stopImmediatePropagation();
+			}
 		});
 	}
 

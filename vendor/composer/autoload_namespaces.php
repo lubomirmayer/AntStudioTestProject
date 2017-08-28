@@ -8,7 +8,6 @@ $baseDir = dirname($vendorDir);
 return array(
     'Kdyby\\Persistence\\' => array($vendorDir . '/kdyby/doctrine/src'),
     'Kdyby\\Doctrine\\' => array($vendorDir . '/kdyby/doctrine/src'),
-    'Kdyby\\DoctrineCache\\' => array($vendorDir . '/kdyby/doctrine-cache/src'),
     'Doctrine\\ORM\\' => array($vendorDir . '/doctrine/orm/lib'),
     'Doctrine\\DBAL\\' => array($vendorDir . '/doctrine/dbal/lib'),
     'Doctrine\\Common\\Lexer\\' => array($vendorDir . '/doctrine/lexer/lib'),

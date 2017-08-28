@@ -14,7 +14,7 @@ body#tracy-debug { /* in popup window */
 	display: block;
 }
 
-#tracy-debug:not(body) {
+body #tracy-debug {
 	position: absolute;
 	bottom: 0;
 	right: 0;
